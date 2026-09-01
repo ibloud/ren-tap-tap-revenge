@@ -242,4 +242,627 @@
 
         <canvas id="gameCanvas" width="450" height="750"></canvas>
 
-        <div id="
+        <div id="mainMenu" class="overlay">
+            <h1>The REN Experience</h1>
+            <h2>Rhythm & Charting Engine</h2>
+            <button class="btn" onclick="showSongSelect('play')">Play Tracks</button>
+            <button class="btn purple" onclick="showSongSelect('edit')">Chart Editor</button>
+            <div class="controls">
+                <span>TAP / HOLD:</span> [A] [S] [D]<br>
+                <span>SWIPE FLOW:</span> [←] [↓] [→]
+            </div>
+        </div>
+
+        <div id="songSelect" class="overlay hidden">
+            <h1 id="selectTitle">Select Track</h1>
+            <h2 id="selectSubtitle">Choose Track to Play</h2>
+            
+            <div class="song-card" onclick="selectTrack('chalk')">
+                <div>
+                    <h3>Chalk Outlines</h3>
+                    <p>ACOUSTIC / SLOW</p>
+                </div>
+                <button class="btn" style="padding: 6px 12px; font-size: 10px;">SELECT</button>
+            </div>
+            
+            <div class="song-card" onclick="selectTrack('money')">
+                <div>
+                    <h3>Money Game Pt 2</h3>
+                    <p>HIP-HOP / MID</p>
+                </div>
+                <button class="btn" style="padding: 6px 12px; font-size: 10px;">SELECT</button>
+            </div>
+            
+            <button class="btn danger" style="margin-top: 20px;" onclick="showMainMenu()">Back</button>
+        </div>
+
+        <div id="pauseMenu" class="overlay hidden">
+            <h1>Paused</h1>
+            <h2>Take a Breath</h2>
+            <button class="btn" onclick="resumeGame()">Resume</button>
+            <button class="btn danger" onclick="quitToMenu()">Quit</button>
+        </div>
+
+        <div id="resultsMenu" class="overlay hidden">
+            <h1>Track Complete</h1>
+            <h2 id="resultsSongName"></h2>
+            <div style="font-size: 11px; color: var(--text-muted); letter-spacing: 2px; margin-bottom: 4px;">FINAL SCORE</div>
+            <h2 id="finalScore" style="color: var(--text-main); font-size: 36px; font-weight: 900; margin-bottom: 25px;">0</h2>
+            <button class="btn" onclick="showSongSelect('play')">Play Again</button>
+            <button class="btn danger" onclick="showMainMenu()">Main Menu</button>
+        </div>
+
+        <div id="editorOverlay" class="hidden">
+            <div class="editor-row">
+                <span>REC TYPE: <b id="noteTypeDisplay" style="color:var(--accent-cyan)">TAP</b></span>
+                <span>TIME: <b id="editorTimer">0.00s</b></span>
+            </div>
+            <div class="editor-row">
+                <button class="btn" style="padding:4px 8px; font-size:10px;" onclick="toggleEditorNoteType()">Type [T]</button>
+                <button class="btn purple" style="padding:4px 8px; font-size:10px;" onclick="exportBeatmap()">Export JSON</button>
+                <button class="btn danger" style="padding:4px 8px; font-size:10px;" onclick="quitToMenu()">Exit</button>
+            </div>
+            <textarea id="exportArea" readonly placeholder="Exported chart JSON will render here..."></textarea>
+        </div>
+    </div>
+
+    <script>
+        // --- Polyfill for roundRect to prevent browser crashes ---
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                if (w < 2 * r) r = w / 2;
+                if (h < 2 * r) r = h / 2;
+                this.beginPath();
+                this.moveTo(x + r, y);
+                this.arcTo(x + w, y, x + w, y + h, r);
+                this.arcTo(x + w, y + h, x, y + h, r);
+                this.arcTo(x, y + h, x, y, r);
+                this.arcTo(x, y, x + w, y, r);
+                this.closePath();
+                return this;
+            };
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const laneWidth = canvas.width / 3;
+        const hitLineY = canvas.height - 110;
+        const TRAVEL_TIME = 1.8; // Time in seconds for a note to fall from top to hit line
+
+        // Built-in Deterministic Beatmaps (Time in Seconds)
+        const songBeatmaps = {
+            chalk: [
+                { time: 3.0, lane: 0, type: 'tap' },
+                { time: 3.8, lane: 1, type: 'tap' },
+                { time: 4.5, lane: 2, type: 'hold', duration: 1.2 },
+                { time: 6.2, lane: 0, type: 'swipe' },
+                { time: 7.0, lane: 1, type: 'tap' },
+                { time: 7.8, lane: 2, type: 'swipe' },
+                { time: 8.5, lane: 1, type: 'hold', duration: 1.5 }
+            ],
+            money: [
+                { time: 2.8, lane: 1, type: 'tap' },
+                { time: 3.4, lane: 2, type: 'swipe' },
+                { time: 4.0, lane: 0, type: 'tap' },
+                { time: 4.8, lane: 1, type: 'hold', duration: 1.0 },
+                { time: 6.0, lane: 2, type: 'swipe' }
+            ]
+        };
+
+        // Engine State Variables
+        let gameState = 'MENU';
+        let targetMode = 'play';
+        let activeSongKey = 'chalk';
+        let score = 0;
+        let combo = 0;
+        let notes = [];
+        let particles = [];
+        let hitFeedbacks = [];
+        let activeBeatmapQueue = [];
+        let recordedChart = [];
+        let recordNoteType = 'tap';
+        let gameEnding = false;
+        
+        let currentSongName = "";
+        let audioStartTime = 0;
+        let pauseStartTime = 0;
+        let totalPausedTime = 0;
+        let screenShakeTimer = 0;
+
+        // Audio Synthesizer
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playHitSound() {
+            if (!audioCtx) return;
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.value = 300 + Math.random() * 100;
+            osc.type = 'triangle';
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function getAudioTime() {
+            if (gameState === 'PLAYING' || gameState === 'EDITING') {
+                return (performance.now() - audioStartTime - totalPausedTime) / 1000;
+            }
+            return 0;
+        }
+
+        // Lanes Configuration
+        const lanes = [
+            { color: '#ff2e4d', glow: 'rgba(255, 46, 77, 0.4)', tapKey: 'a', swipeKey: 'arrowleft', keyPressed: false }, 
+            { color: '#00f2fe', glow: 'rgba(0, 242, 254, 0.4)', tapKey: 's', swipeKey: 'arrowdown', keyPressed: false }, 
+            { color: '#ffbe0b', glow: 'rgba(255, 190, 11, 0.4)', tapKey: 'd', swipeKey: 'arrowright', keyPressed: false }
+        ];
+
+        const laneXPositions = [0, laneWidth, laneWidth * 2];
+
+        function triggerScreenShake(duration = 8) {
+            screenShakeTimer = duration;
+        }
+
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 10; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    radius: Math.random() * 3 + 2,
+                    color: color, alpha: 1,
+                    life: 0.9 + Math.random() * 0.05
+                });
+            }
+        }
+
+        function triggerHitFeedback(text, laneIndex, color) {
+            hitFeedbacks.push({
+                text: text,
+                x: laneXPositions[laneIndex] + laneWidth / 2,
+                y: hitLineY - 20,
+                alpha: 1,
+                color: color
+            });
+        }
+
+        // Beatmap Spawning Engine
+        function updateBeatmapSpawner(currentTimeSeconds) {
+            while (activeBeatmapQueue.length > 0 && activeBeatmapQueue[0].time <= currentTimeSeconds + TRAVEL_TIME) {
+                let noteData = activeBeatmapQueue.shift();
+                notes.push({
+                    lane: noteData.lane,
+                    x: laneXPositions[noteData.lane],
+                    hitTime: noteData.time, // Exact time it should be hit
+                    width: laneWidth,
+                    height: 24,
+                    type: noteData.type,
+                    hit: false,
+                    missed: false,
+                    holding: false,
+                    duration: noteData.duration ? noteData.duration : 0
+                });
+            }
+        }
+
+        // Flow Navigation
+        function showMainMenu() {
+            hideAllOverlays();
+            document.getElementById('mainMenu').classList.remove('hidden');
+            gameState = 'MENU';
+        }
+        
+        function showSongSelect(mode) {
+            targetMode = mode;
+            hideAllOverlays();
+            document.getElementById('songSelect').classList.remove('hidden');
+            document.getElementById('selectTitle').innerText = mode === 'edit' ? "Chart Editor" : "Select Track";
+            document.getElementById('selectSubtitle').innerText = mode === 'edit' ? "Choose Track to Chart" : "Choose Track to Play";
+            gameState = 'MENU';
+        }
+
+        function selectTrack(key) {
+            initAudio();
+            activeSongKey = key;
+            currentSongName = key === 'chalk' ? 'Chalk Outlines' : 'Money Game Pt 2';
+            
+            if (targetMode === 'edit') {
+                startChartEditor();
+            } else {
+                startPlayGame();
+            }
+        }
+        
+        function startPlayGame() {
+            score = 0;
+            combo = 0;
+            notes = [];
+            particles = [];
+            hitFeedbacks = [];
+            gameEnding = false;
+            totalPausedTime = 0;
+            activeBeatmapQueue = JSON.parse(JSON.stringify(songBeatmaps[activeSongKey]));
+            
+            hideAllOverlays();
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('pauseBtn').classList.remove('hidden');
+            
+            audioStartTime = performance.now();
+            gameState = 'PLAYING';
+            updateUI();
+        }
+
+        function startChartEditor() {
+            notes = [];
+            recordedChart = [];
+            totalPausedTime = 0;
+            hideAllOverlays();
+            document.getElementById('editorOverlay').classList.remove('hidden');
+            
+            audioStartTime = performance.now();
+            gameState = 'EDITING';
+        }
+
+        function toggleEditorNoteType() {
+            const types = ['tap', 'hold', 'swipe'];
+            let idx = (types.indexOf(recordNoteType) + 1) % types.length;
+            recordNoteType = types[idx];
+            document.getElementById('noteTypeDisplay').innerText = recordNoteType.toUpperCase();
+        }
+
+        function recordEditorNote(laneIndex) {
+            if (gameState !== 'EDITING') return;
+            let timeStamp = parseFloat(getAudioTime().toFixed(2));
+            let noteObj = { time: timeStamp, lane: laneIndex, type: recordNoteType };
+            if (recordNoteType === 'hold') noteObj.duration = 1.0;
+            
+            recordedChart.push(noteObj);
+            triggerHitFeedback('RECORDED', laneIndex, '#b388ff');
+            createParticles(laneXPositions[laneIndex] + laneWidth / 2, hitLineY, '#b388ff');
+            playHitSound();
+        }
+
+        function exportBeatmap() {
+            let jsonString = JSON.stringify(recordedChart, null, 2);
+            document.getElementById('exportArea').value = jsonString;
+        }
+        
+        function pauseGame() {
+            if (gameState !== 'PLAYING') return;
+            gameState = 'PAUSED';
+            pauseStartTime = performance.now();
+            hideAllOverlays();
+            document.getElementById('pauseMenu').classList.remove('hidden');
+        }
+        
+        function resumeGame() {
+            if (gameState !== 'PAUSED') return;
+            totalPausedTime += performance.now() - pauseStartTime;
+            gameState = 'PLAYING';
+            hideAllOverlays();
+        }
+        
+        function quitToMenu() {
+            gameState = 'MENU';
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('pauseBtn').classList.add('hidden');
+            document.getElementById('editorOverlay').classList.add('hidden');
+            showSongSelect(targetMode);
+        }
+        
+        function endGame() {
+            gameState = 'MENU';
+            gameEnding = false;
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('pauseBtn').classList.add('hidden');
+            document.getElementById('resultsSongName').innerText = currentSongName;
+            document.getElementById('finalScore').innerText = score.toLocaleString();
+            hideAllOverlays();
+            document.getElementById('resultsMenu').classList.remove('hidden');
+        }
+
+        function hideAllOverlays() {
+            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+            document.getElementById('editorOverlay').classList.add('hidden');
+        }
+
+        document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+
+        // Controls & Input Listener
+        document.addEventListener('keydown', (e) => {
+            let key = e.key.toLowerCase();
+
+            if (gameState === 'EDITING') {
+                if (key === 't') toggleEditorNoteType();
+                if (key === 'a') recordEditorNote(0);
+                if (key === 's') recordEditorNote(1);
+                if (key === 'd') recordEditorNote(2);
+                return;
+            }
+
+            if (gameState !== 'PLAYING') return;
+            
+            for (let i = 0; i < lanes.length; i++) {
+                if (key === lanes[i].tapKey && !lanes[i].keyPressed) {
+                    lanes[i].keyPressed = true;
+                    checkHit(i, 'tap');
+                }
+                if (key === lanes[i].swipeKey) {
+                    checkHit(i, 'swipe');
+                }
+            }
+            if (e.key === 'Escape') pauseGame();
+        });
+
+        document.addEventListener('keyup', (e) => {
+            let key = e.key.toLowerCase();
+            for (let i = 0; i < lanes.length; i++) {
+                if (key === lanes[i].tapKey) {
+                    lanes[i].keyPressed = false;
+                    for (let n of notes) {
+                        if (n.lane === i && n.type === 'hold' && n.holding) {
+                            let tailEndHitTime = n.hitTime + n.duration;
+                            if (getAudioTime() < tailEndHitTime) {
+                                n.missed = true;
+                                combo = 0;
+                                triggerHitFeedback('MISS', i, '#ff2e4d');
+                                triggerScreenShake(10);
+                                updateUI();
+                            }
+                            n.holding = false;
+                        }
+                    }
+                }
+            }
+        });
+
+        function checkHit(laneIndex, inputType) {
+            let currentTime = getAudioTime();
+            for (let i = 0; i < notes.length; i++) {
+                let n = notes[i];
+                if (n.lane === laneIndex && !n.hit && !n.missed) {
+                    // Check if we are tapping within 0.5 seconds of the target hit time
+                    let timeDiff = Math.abs(currentTime - n.hitTime);
+                    if (timeDiff < 0.5) {
+                        if (inputType === 'tap' && (n.type === 'tap' || n.type === 'hold')) {
+                            if (n.type === 'hold') {
+                                n.holding = true;
+                                playHitSound();
+                            } else {
+                                n.hit = true;
+                                registerHit(laneIndex, timeDiff);
+                            }
+                            return;
+                        }
+                        if (inputType === 'swipe' && n.type === 'swipe') {
+                            n.hit = true;
+                            registerHit(laneIndex, timeDiff);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        function registerHit(laneIndex, timeDiff) {
+            let evalText = 'PERFECT';
+            let color = '#00f2fe';
+            let baseScore = 100;
+
+            if (timeDiff > 0.2) {
+                evalText = 'GREAT';
+                color = '#ffbe0b';
+                baseScore = 50;
+            }
+
+            createParticles(laneXPositions[laneIndex] + laneWidth / 2, hitLineY, lanes[laneIndex].color);
+            triggerHitFeedback(evalText, laneIndex, color);
+            addScore(baseScore);
+            playHitSound();
+        }
+
+        function addScore(points = 100) {
+            combo++;
+            score += points * (1 + Math.floor(combo / 10) * 0.5);
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('scoreDisplay').innerText = score.toLocaleString();
+            document.getElementById('comboDisplay').innerText = combo > 1 ? combo + " COMBO" : "";
+        }
+
+        // Master Game & Rendering Loop
+        function update() {
+            let currentTime = getAudioTime();
+
+            if (gameState === 'EDITING') {
+                document.getElementById('editorTimer').innerText = currentTime.toFixed(2) + "s";
+            }
+
+            if (gameState === 'PLAYING') {
+                updateBeatmapSpawner(currentTime);
+                if (activeBeatmapQueue.length === 0 && notes.length === 0 && !gameEnding) {
+                    gameEnding = true;
+                    setTimeout(endGame, 1000);
+                }
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Apply Screen Shake Matrix
+            ctx.save();
+            if (screenShakeTimer > 0) {
+                let dx = (Math.random() - 0.5) * 8;
+                let dy = (Math.random() - 0.5) * 8;
+                ctx.translate(dx, dy);
+                screenShakeTimer--;
+            }
+
+            // Draw Lanes & Target Tracks
+            for (let i = 0; i < lanes.length; i++) {
+                let x = laneXPositions[i];
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+
+                if (lanes[i].keyPressed) {
+                    let grad = ctx.createLinearGradient(0, hitLineY - 150, 0, hitLineY + 50);
+                    grad.addColorStop(0, 'transparent');
+                    grad.addColorStop(1, lanes[i].glow);
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(x, hitLineY - 150, laneWidth, 200);
+                }
+
+                ctx.beginPath();
+                ctx.arc(x + laneWidth / 2, hitLineY, 26, 0, 2 * Math.PI);
+                ctx.lineWidth = lanes[i].keyPressed ? 4 : 2;
+                ctx.strokeStyle = lanes[i].keyPressed ? lanes[i].color : 'rgba(255, 255, 255, 0.2)';
+                ctx.stroke();
+            }
+
+            // Hit Target Line
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, hitLineY); ctx.lineTo(canvas.width, hitLineY);
+            ctx.stroke();
+
+            // Notes Processing Loop
+            for (let i = notes.length - 1; i >= 0; i--) {
+                let n = notes[i];
+                
+                // Calculate exact Y position based on Song Time (Framerate Independent!)
+                let timeUntilHit = n.hitTime - currentTime;
+                n.y = hitLineY - (timeUntilHit / TRAVEL_TIME) * (hitLineY + 40);
+
+                let currentLane = lanes[n.lane];
+                let currentX = laneXPositions[n.lane];
+
+                // Hold Note Logic
+                if (n.holding) {
+                    let tailEndHitTime = n.hitTime + n.duration;
+                    if (currentTime >= tailEndHitTime) {
+                        n.hit = true;
+                        n.holding = false;
+                        registerHit(n.lane, 0);
+                    } else {
+                        if (Math.random() > 0.7) {
+                            createParticles(currentX + laneWidth / 2, hitLineY, currentLane.color);
+                        }
+                    }
+                }
+
+                if (!n.hit && !n.missed) {
+                    ctx.shadowColor = currentLane.color;
+                    ctx.shadowBlur = 10;
+
+                    if (n.type === 'tap') {
+                        ctx.fillStyle = currentLane.color;
+                        ctx.beginPath();
+                        ctx.roundRect(currentX + 18, n.y, n.width - 36, n.height, 12);
+                        ctx.fill();
+                    } 
+                    else if (n.type === 'swipe') {
+                        ctx.fillStyle = '#b388ff';
+                        let cx = currentX + laneWidth / 2;
+                        let cy = n.y + n.height / 2;
+                        ctx.beginPath();
+                        ctx.moveTo(cx - 25, cy);
+                        ctx.lineTo(cx + 5, cy - 10);
+                        ctx.lineTo(cx + 5, cy + 10);
+                        ctx.closePath();
+                        ctx.fill();
+                    } 
+                    else if (n.type === 'hold') {
+                        let tailEndHitTime = n.hitTime + n.duration;
+                        let tailY = hitLineY - ((tailEndHitTime - currentTime) / TRAVEL_TIME) * (hitLineY + 40);
+                        
+                        let tailHeight = n.y - tailY;
+                        if (tailHeight > 0) {
+                            let trailGrad = ctx.createLinearGradient(0, tailY, 0, n.y);
+                            trailGrad.addColorStop(0, 'transparent');
+                            trailGrad.addColorStop(1, currentLane.color + '66');
+                            ctx.fillStyle = trailGrad;
+                            ctx.fillRect(currentX + 28, tailY, n.width - 56, tailHeight);
+                        }
+
+                        ctx.fillStyle = currentLane.color;
+                        ctx.beginPath();
+                        ctx.roundRect(currentX + 18, n.y, n.width - 36, n.height, 12);
+                        ctx.fill();
+                    }
+                    ctx.shadowBlur = 0;
+                }
+
+                // Miss Bounds
+                if (n.y > canvas.height + 20 && !n.hit && !n.missed) {
+                    n.missed = true;
+                    combo = 0;
+                    triggerHitFeedback('MISS', n.lane, '#ff2e4d');
+                    triggerScreenShake(10);
+                    updateUI();
+                }
+
+                if (n.hit || n.missed) {
+                    notes.splice(i, 1);
+                }
+            }
+
+            // Render Particle Engine
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.alpha *= p.life;
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                if (p.alpha < 0.05) particles.splice(i, 1);
+            }
+
+            // Render Text Feedbacks
+            for (let i = hitFeedbacks.length - 1; i >= 0; i--) {
+                let h = hitFeedbacks[i];
+                h.y -= 1; h.alpha -= 0.03;
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, h.alpha);
+                ctx.font = '900 15px system-ui';
+                ctx.fillStyle = h.color;
+                ctx.textAlign = 'center';
+                ctx.fillText(h.text, h.x, h.y);
+                ctx.restore();
+                if (h.alpha <= 0) hitFeedbacks.splice(i, 1);
+            }
+
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            if (gameState === 'PLAYING' || gameState === 'EDITING') {
+                update();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Launch Engine
+        showMainMenu();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
