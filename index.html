@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhythm & Remedy</title>
+    <style>
+        body {
+            background-color: #111;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+        #gameCanvas {
+            background: linear-gradient(180deg, #1a1a1a 0%, #000 100%);
+            margin: 20px auto 0;
+            display: block;
+            border-left: 2px solid #333;
+            border-right: 2px solid #333;
+            box-shadow: 0 0 20px rgba(230, 57, 70, 0.2);
+        }
+        h1 { 
+            color: #e63946; 
+            margin-top: 20px; 
+            font-size: 28px; 
+            text-transform: uppercase; 
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px rgba(230, 57, 70, 0.5);
+        }
+        #scoreDisplay { font-size: 24px; margin-top: 10px; color: #f1faee; }
+        #comboDisplay { font-size: 18px; color: #a8dadc; height: 24px; font-weight: bold; }
+        .controls { color: #888; font-size: 12px; margin-top: 15px; line-height: 1.5;}
+        .controls span { color: #e63946; }
+    </style>
+</head>
+<body>
+
+    <h1>Rhythm & Remedy</h1>
+    <div id="scoreDisplay">Score: 0</div>
+    <div id="comboDisplay">Combo: 0</div>
+    <canvas id="gameCanvas" width="450" height="700"></canvas>
+    <div class="controls">
+        <span>TAP/HOLD:</span> [A] [S] [D] or Mouse Click/Hold<br>
+        <span>SWIPE (RAP FLOW):</span> [←] [↓] [→] Arrows
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const laneWidth = canvas.width / 3;
+        const hitLineY = canvas.height - 120;
+
+        // Game State
+        let score = 0;
+        let combo = 0;
+        let notes = [];
+        let gameSpeed = 4;
+
+        // Lanes Configuration
+        const lanes = [
+            { x: 0, color: '#e63946', tapKey: 'a', swipeKey: 'arrowleft', keyPressed: false }, 
+            { x: laneWidth, color: '#457b9d', tapKey: 's', swipeKey: 'arrowdown', keyPressed: false }, 
+            { x: laneWidth * 2, color: '#f1faee', tapKey: 'd', swipeKey: 'arrowright', keyPressed: false }
+        ];
+
+        // Spawner logic
+        let spawnCounter = 0;
+        let noteSequence = ['tap', 'tap', 'hold', 'swipe', 'tap', 'swipe', 'tap', 'hold'];
+        let seqIndex = 0;
+
+        function spawnNote() {
+            let laneIndex = Math.floor(Math.random() * 3);
+            let type = noteSequence[seqIndex % noteSequence.length];
+            seqIndex++;
+
+            let note = {
+                lane: laneIndex,
+                y: -50,
+                width: laneWidth,
+                height: 30,
+                type: type,
+                hit: false,
+                missed: false,
+                holding: false,
+                holdProgress: 0,
+                holdDuration: type === 'hold' ? 120 : 0, // frames to hold
+                swipeHit: false
+            };
+            notes.push(note);
+        }
+
+        // Input Handling
+        document.addEventListener('keydown', (e) => {
+            let key = e.key.toLowerCase();
+            
+            for (let i = 0; i < lanes.length; i++) {
+                if (key === lanes[i].tapKey && !lanes[i].keyPressed) {
+                    lanes[i].keyPressed = true;
+                    checkHit(i, 'tap');
+                }
+                if (key === lanes[i].swipeKey) {
+                    checkHit(i, 'swipe');
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            let key = e.key.toLowerCase();
+            for (let i = 0; i < lanes.length; i++) {
+                if (key === lanes[i].tapKey) {
+                    lanes[i].keyPressed = false;
+                    // Release hold notes
+                    for (let n of notes) {
+                        if (n.lane === i && n.type === 'hold' && n.holding) {
+                            if (n.holdProgress < n.holdDuration) {
+                                n.missed = true; // Released too early
+                                combo = 0;
+                                updateUI();
+                            }
+                            n.holding = false;
+                        }
+                    }
+                }
+            }
+        });
+
+        // Mouse support for Tap & Hold
+        let mouseDown = false;
+        canvas.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            let rect = canvas.getBoundingClientRect();
+            let x = e.clientX - rect.left;
+            let laneIndex = Math.floor(x / laneWidth);
+            lanes[laneIndex].keyPressed = true;
+            checkHit(laneIndex, 'tap');
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            mouseDown = false;
+            for (let i = 0; i < lanes.length; i++) {
+                lanes[i].keyPressed = false;
+                for (let n of notes) {
+                    if (n.lane === i && n.type === 'hold' && n.holding) {
+                        if (n.holdProgress < n.holdDuration) {
+                            n.missed = true;
+                            combo = 0;
+                            updateUI();
+                        }
+                        n.holding = false;
+                    }
+                }
+            }
+        });
+
+        function checkHit(laneIndex, inputType) {
+            for (let i = 0; i < notes.length; i++) {
+                let n = notes[i];
+                if (n.lane === laneIndex && !n.hit && !n.missed) {
+                    // Check if note is near the hit line
+                    if (n.y > hitLineY - 50 && n.y < hitLineY + 40) {
+                        if (inputType === 'tap' && (n.type === 'tap' || n.type === 'hold')) {
+                            n.hit = true;
+                            if (n.type === 'hold') {
+                                n.holding = true; // Start holding
+                                n.hit = false; // Not fully hit yet
+                            } else {
+                                addScore();
+                            }
+                            return;
+                        }
+                        if (inputType === 'swipe' && n.type === 'swipe') {
+                            n.hit = true;
+                            n.swipeHit = true;
+                            addScore();
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        function addScore() {
+            score += 10 * (1 + Math.floor(combo / 10));
+            combo++;
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('scoreDisplay').innerText = "Score: " + score;
+            document.getElementById('comboDisplay').innerText = combo > 0 ? "Combo: " + combo : "";
+        }
+
+        // Game Loop
+        function update() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Lanes & Hit Areas
+            for (let i = 0; i < lanes.length; i++) {
+                // Lane backgrounds
+                ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)';
+                ctx.fillRect(lanes[i].x, 0, laneWidth, canvas.height);
+                
+                // Hit circles
+                ctx.beginPath();
+                ctx.arc(lanes[i].x + laneWidth/2, hitLineY, 35, 0, 2 * Math.PI);
+                ctx.fillStyle = lanes[i].keyPressed ? lanes[i].color : 'rgba(255,255,255,0.05)';
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = lanes[i].color;
+                ctx.stroke();
+            }
+
+            // Draw Hit Line
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.moveTo(0, hitLineY);
+            ctx.lineTo(canvas.width, hitLineY);
+            ctx.stroke();
+
+            // Spawn Notes logic
+            spawnCounter++;
+            if (spawnCounter > 50) {
+                spawnNote();
+                spawnCounter = 0;
+            }
+
+            // Update Notes
+            for (let i = notes.length - 1; i >= 0; i--) {
+                let n = notes[i];
+                if(!n.holding) n.y += gameSpeed;
+
+                let currentLane = lanes[n.lane];
+
+                // Handle Holding logic
+                if (n.holding) {
+                    n.holdProgress++;
+                    if (n.holdProgress >= n.holdDuration) {
+                        n.hit = true; // Successfully held to the end
+                        addScore();
+                    }
+                }
+
+                // Draw Notes based on type
+                if (!n.hit && !n.missed) {
+                    if (n.type === 'tap') {
+                        ctx.fillStyle = currentLane.color;
+                        ctx.fillRect(n.x + 20, n.y, n.width - 40, n.height);
+                    } 
+                    else if (n.type === 'swipe') {
+                        // Draw as an arrow/lightning bolt
+                        ctx.fillStyle = '#ff00ff'; // Neon magenta for rap flows
+                        ctx.beginPath();
+                        ctx.moveTo(n.x + laneWidth/2, n.y);
+                        ctx.lineTo(n.x + laneWidth/2 + 20, n.y + n.height/2);
+                        ctx.lineTo(n.x + laneWidth/2, n.y + n.height);
+                        ctx.lineTo(n.x + laneWidth/2 - 20, n.y + n.height/2);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    else if (n.type === 'hold') {
+                        let tailHeight = n.holdDuration * gameSpeed;
+                        // Draw tail
+                        ctx.fillStyle = currentLane.color + '80'; // Add transparency
+                        ctx.fillRect(n.x + 30, n.y, n.width - 60, tailHeight);
+                        // Draw head of the hold note
+                        ctx.fillStyle = currentLane.color;
+                        ctx.fillRect(n.x + 20, n.y, n.width - 40, n.height);
+                        
+                        // If holding, shrink the tail visually
+                        if (n.holding) {
+                             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                             ctx.fillRect(n.x + 30, n.y, n.width - 60, n.holdProgress * gameSpeed);
+                        }
+                    }
+                }
+
+                // Missed note (passed the line without being hit/held)
+                if (n.y > canvas.height && !n.hit && !n.missed) {
+                    n.missed = true;
+                    combo = 0;
+                    updateUI();
+                }
+                
+                // Clean up notes
+                if (n.hit || n.missed) {
+                    notes.splice(i, 1);
+                }
+            }
+        }
+
+        function gameLoop() {
+            update();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
