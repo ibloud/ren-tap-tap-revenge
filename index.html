@@ -3,49 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rhythm & Remedy</title>
+    <title>The REN Experience</title>
     <style>
+        :root {
+            --bg-dark: #0a0b10;
+            --bg-panel: #14151c;
+            --text-main: #e0e1e6;
+            --text-muted: #6b6d7a;
+            --accent-crimson: #e63946;
+            --accent-cyan: #06d6a0;
+            --accent-purple: #b388ff;
+            --border-subtle: #2a2c38;
+            --glow-crimson: rgba(230, 57, 70, 0.6);
+            --glow-cyan: rgba(6, 214, 160, 0.6);
+        }
+
         body {
-            background-color: #111;
-            color: #fff;
-            font-family: 'Courier New', monospace;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Segoe UI', 'Courier New', monospace;
             text-align: center;
             margin: 0;
             padding: 0;
             overflow: hidden;
             user-select: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
         }
+
+        #gameContainer {
+            position: relative;
+            width: 450px;
+            height: 700px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+        }
+
         #gameCanvas {
-            background: linear-gradient(180deg, #1a1a1a 0%, #000 100%);
-            margin: 20px auto 0;
+            background: radial-gradient(circle at 50% 30%, #1a1c25 0%, #0a0b10 80%);
+            margin: 0 auto;
             display: block;
-            border-left: 2px solid #333;
-            border-right: 2px solid #333;
-            box-shadow: 0 0 20px rgba(230, 57, 70, 0.2);
+            border-left: 1px solid var(--border-subtle);
+            border-right: 1px solid var(--border-subtle);
         }
+        
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 11, 16, 0.95);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        .hidden { display: none !important; }
+
         h1 { 
-            color: #e63946; 
-            margin-top: 20px; 
-            font-size: 28px; 
+            color: var(--text-main); 
+            font-size: 36px; 
             text-transform: uppercase; 
-            letter-spacing: 3px;
-            text-shadow: 0 0 10px rgba(230, 57, 70, 0.5);
+            letter-spacing: 4px;
+            margin-bottom: 5px;
+            font-weight: 800;
         }
-        #scoreDisplay { font-size: 24px; margin-top: 10px; color: #f1faee; }
-        #comboDisplay { font-size: 18px; color: #a8dadc; height: 24px; font-weight: bold; }
-        .controls { color: #888; font-size: 12px; margin-top: 15px; line-height: 1.5;}
-        .controls span { color: #e63946; }
+        h2 { color: var(--accent-cyan); font-size: 18px; margin-bottom: 40px; font-weight: 300; letter-spacing: 2px; }
+        h3 { color: var(--text-main); margin: 0 0 5px 0; font-size: 18px; font-weight: 600; }
+
+        .btn {
+            background-color: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--accent-cyan);
+            padding: 12px 35px;
+            font-size: 16px;
+            font-family: inherit;
+            cursor: pointer;
+            margin: 8px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.2s ease;
+            border-radius: 2px;
+        }
+        .btn:hover { 
+            background-color: var(--accent-cyan); 
+            color: var(--bg-dark); 
+            box-shadow: 0 0 15px var(--glow-cyan);
+        }
+        .btn.danger { border-color: var(--accent-crimson); }
+        .btn.danger:hover { 
+            background-color: var(--accent-crimson); 
+            color: var(--text-main);
+            box-shadow: 0 0 15px var(--glow-crimson);
+        }
+
+        .song-card {
+            border: 1px solid var(--border-subtle);
+            padding: 15px 25px;
+            margin: 8px;
+            cursor: pointer;
+            width: 280px;
+            background: rgba(255,255,255,0.02);
+            transition: all 0.2s ease;
+            border-radius: 4px;
+            text-align: left;
+        }
+        .song-card:hover { 
+            border-color: var(--accent-crimson); 
+            background: rgba(230, 57, 70, 0.05);
+            transform: translateY(-2px);
+        }
+        .song-card p { margin: 0; color: var(--text-muted); font-size: 12px; letter-spacing: 1px; }
+
+        #pauseBtn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 5;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+            padding: 5px 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            border-radius: 2px;
+        }
+        #pauseBtn:hover { color: var(--text-main); border-color: var(--text-muted); }
+
+        .controls { color: var(--text-muted); font-size: 12px; margin-top: 30px; line-height: 1.8; letter-spacing: 1px;}
+        .controls span { color: var(--accent-cyan); font-weight: bold; }
+
+        #hud { position: absolute; top: 15px; left: 0; width: 100%; pointer-events: none; z-index: 4; text-align: left; padding-left: 15px; }
+        #scoreDisplay { font-size: 22px; color: var(--text-main); font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        #comboDisplay { font-size: 16px; color: var(--accent-crimson); height: 20px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
     </style>
 </head>
 <body>
 
-    <h1>Rhythm & Remedy</h1>
-    <div id="scoreDisplay">Score: 0</div>
-    <div id="comboDisplay">Combo: 0</div>
-    <canvas id="gameCanvas" width="450" height="700"></canvas>
-    <div class="controls">
-        <span>TAP/HOLD:</span> [A] [S] [D] or Mouse Click/Hold<br>
-        <span>SWIPE (RAP FLOW):</span> [←] [↓] [→] Arrows
+    <div id="gameContainer">
+        <div id="hud" class="hidden">
+            <div id="scoreDisplay">Score: 0</div>
+            <div id="comboDisplay">Combo: 0</div>
+        </div>
+        <button id="pauseBtn" class="hidden">|| PAUSE</button>
+
+        <canvas id="gameCanvas" width="450" height="700"></canvas>
+
+        <!-- Main Menu -->
+        <div id="mainMenu" class="overlay">
+            <h1>The REN Experience</h1>
+            <h2>Rhythm & Remedy</h2>
+            <button class="btn" onclick="showSongSelect()">Start Game</button>
+            <div class="controls">
+                <span>TAP/HOLD:</span> [A] [S] [D] or Mouse<br>
+                <span>SWIPE (RAP FLOW):</span> [←] [↓] [→] Arrows
+            </div>
+        </div>
+
+        <!-- Song Select -->
+        <div id="songSelect" class="overlay hidden">
+            <h1>Select Track</h1>
+            <div class="song-card" onclick="startGame('chalk', 'Chalk Outlines', 2, 30)">
+                <h3>Chalk Outlines</h3>
+                <p>Difficulty: Easy | Tempo: Slow</p>
+            </div>
+            <div class="song-card" onclick="startGame('money', 'Money Game Pt 2', 4, 50)">
+                <h3>Money Game Pt 2</h3>
+                <p>Difficulty: Medium | Tempo: Mid</p>
+            </div>
+            <div class="song-card" onclick="startGame('sickboi', 'Sick Boi', 6, 70)">
+                <h3>Sick Boi</h3>
+                <p>Difficulty: Extreme | Tempo: Fast</p>
+            </div>
+            <button class="btn danger" onclick="showMainMenu()">Back</button>
+        </div>
+
+        <!-- Pause Menu -->
+        <div id="pauseMenu" class="overlay hidden">
+            <h1>Paused</h1>
+            <button class="btn" onclick="resumeGame()">Resume</button>
+            <button class="btn danger" onclick="quitToMenu()">Quit to Menu</button>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="resultsMenu" class="overlay hidden">
+            <h1>Track Complete</h1>
+            <h2 id="resultsSongName"></h2>
+            <h2 id="finalScore" style="color: var(--text-main); font-size: 32px; margin-bottom: 30px;">Score: 0</h2>
+            <button class="btn" onclick="showSongSelect()">Play Another</button>
+            <button class="btn danger" onclick="showMainMenu()">Main Menu</button>
+        </div>
     </div>
 
     <script>
@@ -55,22 +207,27 @@
         const laneWidth = canvas.width / 3;
         const hitLineY = canvas.height - 120;
 
-        // Game State
+        // Game State Variables
+        let gameState = 'MENU';
         let score = 0;
         let combo = 0;
         let notes = [];
-        let gameSpeed = 4;
-
+        let fallSpeed = 4;
+        let spawnRate = 45;
+        let currentSongName = "";
+        let songTimer = 0;
+        let songDuration = 600; // 10 seconds at 60fps
+        let spawnCounter = 0;
+        
         // Lanes Configuration
         const lanes = [
-            { x: 0, color: '#e63946', tapKey: 'a', swipeKey: 'arrowleft', keyPressed: false }, 
-            { x: laneWidth, color: '#457b9d', tapKey: 's', swipeKey: 'arrowdown', keyPressed: false }, 
-            { x: laneWidth * 2, color: '#f1faee', tapKey: 'd', swipeKey: 'arrowright', keyPressed: false }
+            { color: '#e63946', glow: 'rgba(230, 57, 70, 0.4)', tapKey: 'a', swipeKey: 'arrowleft', keyPressed: false }, 
+            { color: '#06d6a0', glow: 'rgba(6, 214, 160, 0.4)', tapKey: 's', swipeKey: 'arrowdown', keyPressed: false }, 
+            { color: '#ffd166', glow: 'rgba(255, 209, 102, 0.4)', tapKey: 'd', swipeKey: 'arrowright', keyPressed: false }
         ];
 
-        // Spawner logic
-        let spawnCounter = 0;
-        let noteSequence = ['tap', 'tap', 'hold', 'swipe', 'tap', 'swipe', 'tap', 'hold'];
+        const laneXPositions = [0, laneWidth, laneWidth * 2];
+        const noteSequence = ['tap', 'tap', 'hold', 'swipe', 'tap', 'swipe', 'tap', 'hold'];
         let seqIndex = 0;
 
         function spawnNote() {
@@ -78,8 +235,9 @@
             let type = noteSequence[seqIndex % noteSequence.length];
             seqIndex++;
 
-            let note = {
+            notes.push({
                 lane: laneIndex,
+                x: laneXPositions[laneIndex],
                 y: -50,
                 width: laneWidth,
                 height: 30,
@@ -88,14 +246,80 @@
                 missed: false,
                 holding: false,
                 holdProgress: 0,
-                holdDuration: type === 'hold' ? 120 : 0, // frames to hold
-                swipeHit: false
-            };
-            notes.push(note);
+                holdDuration: type === 'hold' ? 120 : 0
+            });
         }
 
-        // Input Handling
+        // --- UI NAVIGATION ---
+        function showMainMenu() {
+            hideAllOverlays();
+            document.getElementById('mainMenu').classList.remove('hidden');
+            gameState = 'MENU';
+        }
+        
+        function showSongSelect() {
+            hideAllOverlays();
+            document.getElementById('songSelect').classList.remove('hidden');
+            gameState = 'MENU';
+        }
+        
+        function startGame(songId, name, speed, spawnT) {
+            currentSongName = name;
+            score = 0;
+            combo = 0;
+            notes = [];
+            songTimer = 0;
+            spawnCounter = 0;
+            seqIndex = 0;
+            fallSpeed = speed;
+            spawnRate = spawnT;
+            songDuration = 600; // Fixed 10 seconds playtime
+            
+            hideAllOverlays();
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('pauseBtn').classList.remove('hidden');
+            gameState = 'PLAYING';
+            updateUI();
+        }
+        
+        function pauseGame() {
+            if (gameState !== 'PLAYING') return;
+            gameState = 'PAUSED';
+            hideAllOverlays();
+            document.getElementById('pauseMenu').classList.remove('hidden');
+        }
+        
+        function resumeGame() {
+            gameState = 'PLAYING';
+            hideAllOverlays();
+        }
+        
+        function quitToMenu() {
+            gameState = 'MENU';
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('pauseBtn').classList.add('hidden');
+            showSongSelect();
+        }
+        
+        function endGame() {
+            gameState = 'MENU';
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('pauseBtn').classList.add('hidden');
+            document.getElementById('resultsSongName').innerText = currentSongName;
+            document.getElementById('finalScore').innerText = "Score: " + score;
+            hideAllOverlays();
+            document.getElementById('resultsMenu').classList.remove('hidden');
+        }
+
+        function hideAllOverlays() {
+            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+        }
+
+        document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+
+        // --- INPUT HANDLING ---
         document.addEventListener('keydown', (e) => {
+            if (gameState !== 'PLAYING') return;
             let key = e.key.toLowerCase();
             
             for (let i = 0; i < lanes.length; i++) {
@@ -107,6 +331,7 @@
                     checkHit(i, 'swipe');
                 }
             }
+            if (e.key === 'Escape') pauseGame();
         });
 
         document.addEventListener('keyup', (e) => {
@@ -114,11 +339,10 @@
             for (let i = 0; i < lanes.length; i++) {
                 if (key === lanes[i].tapKey) {
                     lanes[i].keyPressed = false;
-                    // Release hold notes
                     for (let n of notes) {
                         if (n.lane === i && n.type === 'hold' && n.holding) {
                             if (n.holdProgress < n.holdDuration) {
-                                n.missed = true; // Released too early
+                                n.missed = true;
                                 combo = 0;
                                 updateUI();
                             }
@@ -129,19 +353,18 @@
             }
         });
 
-        // Mouse support for Tap & Hold
-        let mouseDown = false;
         canvas.addEventListener('mousedown', (e) => {
-            mouseDown = true;
+            if (gameState !== 'PLAYING') return;
             let rect = canvas.getBoundingClientRect();
             let x = e.clientX - rect.left;
-            let laneIndex = Math.floor(x / laneWidth);
-            lanes[laneIndex].keyPressed = true;
-            checkHit(laneIndex, 'tap');
+            let laneIndex = Math.floor(x / (rect.width / 3));
+            if(laneIndex >= 0 && laneIndex < 3) {
+                lanes[laneIndex].keyPressed = true;
+                checkHit(laneIndex, 'tap');
+            }
         });
 
         canvas.addEventListener('mouseup', () => {
-            mouseDown = false;
             for (let i = 0; i < lanes.length; i++) {
                 lanes[i].keyPressed = false;
                 for (let n of notes) {
@@ -161,13 +384,12 @@
             for (let i = 0; i < notes.length; i++) {
                 let n = notes[i];
                 if (n.lane === laneIndex && !n.hit && !n.missed) {
-                    // Check if note is near the hit line
                     if (n.y > hitLineY - 50 && n.y < hitLineY + 40) {
                         if (inputType === 'tap' && (n.type === 'tap' || n.type === 'hold')) {
                             n.hit = true;
                             if (n.type === 'hold') {
-                                n.holding = true; // Start holding
-                                n.hit = false; // Not fully hit yet
+                                n.holding = true;
+                                n.hit = false;
                             } else {
                                 addScore();
                             }
@@ -175,7 +397,6 @@
                         }
                         if (inputType === 'swipe' && n.type === 'swipe') {
                             n.hit = true;
-                            n.swipeHit = true;
                             addScore();
                             return;
                         }
@@ -195,37 +416,43 @@
             document.getElementById('comboDisplay').innerText = combo > 0 ? "Combo: " + combo : "";
         }
 
-        // Game Loop
+        // --- GAME LOOP ---
         function update() {
+            songTimer++;
+            if (songTimer > songDuration) {
+                endGame();
+                return;
+            }
+
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Draw Lanes & Hit Areas
             for (let i = 0; i < lanes.length; i++) {
-                // Lane backgrounds
-                ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)';
-                ctx.fillRect(lanes[i].x, 0, laneWidth, canvas.height);
+                ctx.fillStyle = 'rgba(255,255,255,0.02)';
+                ctx.fillRect(laneXPositions[i], 0, laneWidth, canvas.height);
                 
-                // Hit circles
                 ctx.beginPath();
-                ctx.arc(lanes[i].x + laneWidth/2, hitLineY, 35, 0, 2 * Math.PI);
-                ctx.fillStyle = lanes[i].keyPressed ? lanes[i].color : 'rgba(255,255,255,0.05)';
+                ctx.arc(laneXPositions[i] + laneWidth/2, hitLineY, 32, 0, 2 * Math.PI);
+                ctx.fillStyle = lanes[i].keyPressed ? lanes[i].glow : 'rgba(255,255,255,0.02)';
                 ctx.fill();
+                
                 ctx.lineWidth = 2;
-                ctx.strokeStyle = lanes[i].color;
+                ctx.strokeStyle = lanes[i].keyPressed ? lanes[i].color : 'rgba(255,255,255,0.15)';
                 ctx.stroke();
             }
 
-            // Draw Hit Line
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            // Hit Line
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(0, hitLineY);
             ctx.lineTo(canvas.width, hitLineY);
             ctx.stroke();
 
-            // Spawn Notes logic
+            // Spawn logic
             spawnCounter++;
-            if (spawnCounter > 50) {
+            if (spawnCounter > spawnRate) {
                 spawnNote();
                 spawnCounter = 0;
             }
@@ -233,61 +460,61 @@
             // Update Notes
             for (let i = notes.length - 1; i >= 0; i--) {
                 let n = notes[i];
-                if(!n.holding) n.y += gameSpeed;
+                if(!n.holding) n.y += fallSpeed;
 
                 let currentLane = lanes[n.lane];
+                let currentX = laneXPositions[n.lane];
 
-                // Handle Holding logic
                 if (n.holding) {
                     n.holdProgress++;
                     if (n.holdProgress >= n.holdDuration) {
-                        n.hit = true; // Successfully held to the end
+                        n.hit = true;
                         addScore();
                     }
                 }
 
-                // Draw Notes based on type
                 if (!n.hit && !n.missed) {
+                    ctx.shadowColor = currentLane.color;
+                    ctx.shadowBlur = 10;
+
                     if (n.type === 'tap') {
                         ctx.fillStyle = currentLane.color;
-                        ctx.fillRect(n.x + 20, n.y, n.width - 40, n.height);
+                        ctx.fillRect(currentX + 20, n.y, n.width - 40, n.height);
                     } 
                     else if (n.type === 'swipe') {
-                        // Draw as an arrow/lightning bolt
-                        ctx.fillStyle = '#ff00ff'; // Neon magenta for rap flows
+                        ctx.fillStyle = '#b388ff'; 
+                        ctx.shadowColor = '#b388ff';
+                        ctx.shadowBlur = 15;
                         ctx.beginPath();
-                        ctx.moveTo(n.x + laneWidth/2, n.y);
-                        ctx.lineTo(n.x + laneWidth/2 + 20, n.y + n.height/2);
-                        ctx.lineTo(n.x + laneWidth/2, n.y + n.height);
-                        ctx.lineTo(n.x + laneWidth/2 - 20, n.y + n.height/2);
+                        ctx.moveTo(currentX + laneWidth/2, n.y);
+                        ctx.lineTo(currentX + laneWidth/2 + 18, n.y + n.height/2);
+                        ctx.lineTo(currentX + laneWidth/2, n.y + n.height);
+                        ctx.lineTo(currentX + laneWidth/2 - 18, n.y + n.height/2);
                         ctx.closePath();
                         ctx.fill();
                     }
                     else if (n.type === 'hold') {
-                        let tailHeight = n.holdDuration * gameSpeed;
-                        // Draw tail
-                        ctx.fillStyle = currentLane.color + '80'; // Add transparency
-                        ctx.fillRect(n.x + 30, n.y, n.width - 60, tailHeight);
-                        // Draw head of the hold note
-                        ctx.fillStyle = currentLane.color;
-                        ctx.fillRect(n.x + 20, n.y, n.width - 40, n.height);
+                        let tailHeight = n.holdDuration * fallSpeed;
+                        ctx.fillStyle = currentLane.color + '40';
+                        ctx.fillRect(currentX + 30, n.y, n.width - 60, tailHeight);
                         
-                        // If holding, shrink the tail visually
+                        ctx.fillStyle = currentLane.color;
+                        ctx.fillRect(currentX + 20, n.y, n.width - 40, n.height);
+                        
                         if (n.holding) {
-                             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                             ctx.fillRect(n.x + 30, n.y, n.width - 60, n.holdProgress * gameSpeed);
+                             ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                             ctx.fillRect(currentX + 30, n.y, n.width - 60, n.holdProgress * fallSpeed);
                         }
                     }
+                    ctx.shadowBlur = 0;
                 }
 
-                // Missed note (passed the line without being hit/held)
                 if (n.y > canvas.height && !n.hit && !n.missed) {
                     n.missed = true;
                     combo = 0;
                     updateUI();
                 }
                 
-                // Clean up notes
                 if (n.hit || n.missed) {
                     notes.splice(i, 1);
                 }
@@ -295,11 +522,15 @@
         }
 
         function gameLoop() {
-            update();
+            if (gameState === 'PLAYING') {
+                update();
+            }
             requestAnimationFrame(gameLoop);
         }
 
-        gameLoop();
+        // Initialize
+        showMainMenu();
+        requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>
