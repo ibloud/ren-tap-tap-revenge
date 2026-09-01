@@ -3,25 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The REN Experience</title>
+    <title>The REN Experience - Engine & Chart Editor</title>
     <style>
         :root {
-            --bg-dark: #0a0b10;
-            --bg-panel: #14151c;
-            --text-main: #e0e1e6;
-            --text-muted: #6b6d7a;
-            --accent-crimson: #e63946;
-            --accent-cyan: #06d6a0;
+            --bg-dark: #07080b;
+            --bg-panel: rgba(18, 20, 28, 0.85);
+            --text-main: #f0f2f5;
+            --text-muted: #8b8f9e;
+            --accent-crimson: #ff2e4d;
+            --accent-cyan: #00f2fe;
             --accent-purple: #b388ff;
-            --border-subtle: #2a2c38;
-            --glow-crimson: rgba(230, 57, 70, 0.6);
-            --glow-cyan: rgba(6, 214, 160, 0.6);
+            --accent-gold: #ffbe0b;
+            --border-subtle: rgba(255, 255, 255, 0.1);
+            --glow-crimson: rgba(255, 46, 77, 0.5);
+            --glow-cyan: rgba(0, 242, 254, 0.5);
+            --glow-gold: rgba(255, 190, 11, 0.5);
         }
 
         body {
             background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(255, 46, 77, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(0, 242, 254, 0.08) 0%, transparent 40%);
             color: var(--text-main);
-            font-family: 'Segoe UI', 'Courier New', monospace;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             text-align: center;
             margin: 0;
             padding: 0;
@@ -36,16 +41,17 @@
         #gameContainer {
             position: relative;
             width: 450px;
-            height: 700px;
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+            height: 750px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(0, 242, 254, 0.05);
+            border: 1px solid var(--border-subtle);
         }
 
         #gameCanvas {
-            background: radial-gradient(circle at 50% 30%, #1a1c25 0%, #0a0b10 80%);
+            background: linear-gradient(180deg, #0d0f17 0%, #050608 100%);
             margin: 0 auto;
             display: block;
-            border-left: 1px solid var(--border-subtle);
-            border-right: 1px solid var(--border-subtle);
         }
         
         .overlay {
@@ -54,483 +60,186 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(10, 11, 16, 0.95);
-            backdrop-filter: blur(8px);
+            background: rgba(7, 8, 11, 0.88);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 10;
         }
+        
         .hidden { display: none !important; }
 
         h1 { 
             color: var(--text-main); 
-            font-size: 36px; 
+            font-size: 28px; 
             text-transform: uppercase; 
-            letter-spacing: 4px;
-            margin-bottom: 5px;
-            font-weight: 800;
+            letter-spacing: 5px;
+            margin: 0 0 4px 0;
+            font-weight: 900;
+            text-shadow: 0 0 20px var(--glow-cyan);
+            background: linear-gradient(135deg, #fff 0%, #8b8f9e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        h2 { color: var(--accent-cyan); font-size: 18px; margin-bottom: 40px; font-weight: 300; letter-spacing: 2px; }
-        h3 { color: var(--text-main); margin: 0 0 5px 0; font-size: 18px; font-weight: 600; }
+
+        h2 { 
+            color: var(--accent-cyan); 
+            font-size: 13px; 
+            margin-bottom: 25px; 
+            font-weight: 500; 
+            letter-spacing: 3px; 
+            text-transform: uppercase;
+        }
 
         .btn {
-            background-color: transparent;
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
             color: var(--text-main);
             border: 1px solid var(--accent-cyan);
-            padding: 12px 35px;
-            font-size: 16px;
+            padding: 12px 30px;
+            font-size: 13px;
+            font-weight: 700;
             font-family: inherit;
             cursor: pointer;
-            margin: 8px;
+            margin: 6px;
             text-transform: uppercase;
             letter-spacing: 2px;
-            transition: all 0.2s ease;
-            border-radius: 2px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
+
         .btn:hover { 
-            background-color: var(--accent-cyan); 
+            background: var(--accent-cyan); 
             color: var(--bg-dark); 
-            box-shadow: 0 0 15px var(--glow-cyan);
+            box-shadow: 0 0 25px var(--glow-cyan);
+            transform: translateY(-2px);
         }
+
         .btn.danger { border-color: var(--accent-crimson); }
         .btn.danger:hover { 
-            background-color: var(--accent-crimson); 
+            background: var(--accent-crimson); 
             color: var(--text-main);
-            box-shadow: 0 0 15px var(--glow-crimson);
+            box-shadow: 0 0 25px var(--glow-crimson);
+        }
+
+        .btn.purple { border-color: var(--accent-purple); }
+        .btn.purple:hover { 
+            background: var(--accent-purple); 
+            color: var(--bg-dark);
+            box-shadow: 0 0 25px rgba(179, 136, 255, 0.6);
         }
 
         .song-card {
             border: 1px solid var(--border-subtle);
-            padding: 15px 25px;
-            margin: 8px;
+            padding: 14px 18px;
+            margin: 6px 0;
             cursor: pointer;
-            width: 280px;
-            background: rgba(255,255,255,0.02);
-            transition: all 0.2s ease;
-            border-radius: 4px;
+            width: 300px;
+            background: var(--bg-panel);
+            transition: all 0.25s ease;
+            border-radius: 8px;
             text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+
         .song-card:hover { 
-            border-color: var(--accent-crimson); 
-            background: rgba(230, 57, 70, 0.05);
-            transform: translateY(-2px);
+            border-color: var(--accent-cyan); 
+            background: rgba(0, 242, 254, 0.08);
+            transform: translateX(3px);
         }
-        .song-card p { margin: 0; color: var(--text-muted); font-size: 12px; letter-spacing: 1px; }
+
+        .song-card h3 { color: var(--text-main); margin: 0 0 4px 0; font-size: 15px; font-weight: 700; }
+        .song-card p { margin: 0; color: var(--text-muted); font-size: 11px; letter-spacing: 1px; }
 
         #pauseBtn {
             position: absolute;
-            top: 15px;
-            right: 15px;
+            top: 20px;
+            right: 20px;
             z-index: 5;
-            background: rgba(0,0,0,0.6);
+            background: rgba(18, 20, 28, 0.6);
             border: 1px solid var(--border-subtle);
             color: var(--text-muted);
-            padding: 5px 12px;
+            padding: 6px 14px;
             cursor: pointer;
             font-family: inherit;
-            font-size: 12px;
-            border-radius: 2px;
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+            border-radius: 20px;
+            backdrop-filter: blur(4px);
         }
-        #pauseBtn:hover { color: var(--text-main); border-color: var(--text-muted); }
 
-        .controls { color: var(--text-muted); font-size: 12px; margin-top: 30px; line-height: 1.8; letter-spacing: 1px;}
-        .controls span { color: var(--accent-cyan); font-weight: bold; }
+        .controls { 
+            color: var(--text-muted); 
+            font-size: 11px; 
+            margin-top: 25px; 
+            line-height: 2; 
+            letter-spacing: 1.5px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
 
-        #hud { position: absolute; top: 15px; left: 0; width: 100%; pointer-events: none; z-index: 4; text-align: left; padding-left: 15px; }
-        #scoreDisplay { font-size: 22px; color: var(--text-main); font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
-        #comboDisplay { font-size: 16px; color: var(--accent-crimson); height: 20px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        .controls span { color: var(--accent-cyan); font-weight: 700; }
+
+        #hud { 
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            pointer-events: none; 
+            z-index: 4; 
+            text-align: left; 
+        }
+
+        #scoreDisplay { font-size: 26px; color: var(--text-main); font-weight: 800; }
+        #comboDisplay { font-size: 14px; color: var(--accent-gold); height: 20px; font-weight: 700; text-transform: uppercase; }
+
+        /* Charting Editor HUD overlay */
+        #editorOverlay {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 20;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-subtle);
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .editor-row { display: flex; justify-content: space-between; align-items: center; }
+        textarea#exportArea {
+            width: 95%;
+            height: 80px;
+            background: #000;
+            color: var(--accent-cyan);
+            border: 1px solid var(--border-subtle);
+            font-family: monospace;
+            font-size: 10px;
+            resize: none;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
 
     <div id="gameContainer">
         <div id="hud" class="hidden">
-            <div id="scoreDisplay">Score: 0</div>
-            <div id="comboDisplay">Combo: 0</div>
+            <div id="scoreDisplay">0</div>
+            <div id="comboDisplay"></div>
         </div>
-        <button id="pauseBtn" class="hidden">|| PAUSE</button>
+        <button id="pauseBtn" class="hidden">PAUSE</button>
 
-        <canvas id="gameCanvas" width="450" height="700"></canvas>
+        <canvas id="gameCanvas" width="450" height="750"></canvas>
 
-        <!-- Main Menu -->
-        <div id="mainMenu" class="overlay">
-            <h1>The REN Experience</h1>
-            <h2>Rhythm & Remedy</h2>
-            <button class="btn" onclick="showSongSelect()">Start Game</button>
-            <div class="controls">
-                <span>TAP/HOLD:</span> [A] [S] [D] or Mouse<br>
-                <span>SWIPE (RAP FLOW):</span> [←] [↓] [→] Arrows
-            </div>
-        </div>
-
-        <!-- Song Select -->
-        <div id="songSelect" class="overlay hidden">
-            <h1>Select Track</h1>
-            <div class="song-card" onclick="startGame('chalk', 'Chalk Outlines', 2, 30)">
-                <h3>Chalk Outlines</h3>
-                <p>Difficulty: Easy | Tempo: Slow</p>
-            </div>
-            <div class="song-card" onclick="startGame('money', 'Money Game Pt 2', 4, 50)">
-                <h3>Money Game Pt 2</h3>
-                <p>Difficulty: Medium | Tempo: Mid</p>
-            </div>
-            <div class="song-card" onclick="startGame('sickboi', 'Sick Boi', 6, 70)">
-                <h3>Sick Boi</h3>
-                <p>Difficulty: Extreme | Tempo: Fast</p>
-            </div>
-            <button class="btn danger" onclick="showMainMenu()">Back</button>
-        </div>
-
-        <!-- Pause Menu -->
-        <div id="pauseMenu" class="overlay hidden">
-            <h1>Paused</h1>
-            <button class="btn" onclick="resumeGame()">Resume</button>
-            <button class="btn danger" onclick="quitToMenu()">Quit to Menu</button>
-        </div>
-
-        <!-- Results Screen -->
-        <div id="resultsMenu" class="overlay hidden">
-            <h1>Track Complete</h1>
-            <h2 id="resultsSongName"></h2>
-            <h2 id="finalScore" style="color: var(--text-main); font-size: 32px; margin-bottom: 30px;">Score: 0</h2>
-            <button class="btn" onclick="showSongSelect()">Play Another</button>
-            <button class="btn danger" onclick="showMainMenu()">Main Menu</button>
-        </div>
-    </div>
-
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        const laneWidth = canvas.width / 3;
-        const hitLineY = canvas.height - 120;
-
-        // Game State Variables
-        let gameState = 'MENU';
-        let score = 0;
-        let combo = 0;
-        let notes = [];
-        let fallSpeed = 4;
-        let spawnRate = 45;
-        let currentSongName = "";
-        let songTimer = 0;
-        let songDuration = 600; // 10 seconds at 60fps
-        let spawnCounter = 0;
-        
-        // Lanes Configuration
-        const lanes = [
-            { color: '#e63946', glow: 'rgba(230, 57, 70, 0.4)', tapKey: 'a', swipeKey: 'arrowleft', keyPressed: false }, 
-            { color: '#06d6a0', glow: 'rgba(6, 214, 160, 0.4)', tapKey: 's', swipeKey: 'arrowdown', keyPressed: false }, 
-            { color: '#ffd166', glow: 'rgba(255, 209, 102, 0.4)', tapKey: 'd', swipeKey: 'arrowright', keyPressed: false }
-        ];
-
-        const laneXPositions = [0, laneWidth, laneWidth * 2];
-        const noteSequence = ['tap', 'tap', 'hold', 'swipe', 'tap', 'swipe', 'tap', 'hold'];
-        let seqIndex = 0;
-
-        function spawnNote() {
-            let laneIndex = Math.floor(Math.random() * 3);
-            let type = noteSequence[seqIndex % noteSequence.length];
-            seqIndex++;
-
-            notes.push({
-                lane: laneIndex,
-                x: laneXPositions[laneIndex],
-                y: -50,
-                width: laneWidth,
-                height: 30,
-                type: type,
-                hit: false,
-                missed: false,
-                holding: false,
-                holdProgress: 0,
-                holdDuration: type === 'hold' ? 120 : 0
-            });
-        }
-
-        // --- UI NAVIGATION ---
-        function showMainMenu() {
-            hideAllOverlays();
-            document.getElementById('mainMenu').classList.remove('hidden');
-            gameState = 'MENU';
-        }
-        
-        function showSongSelect() {
-            hideAllOverlays();
-            document.getElementById('songSelect').classList.remove('hidden');
-            gameState = 'MENU';
-        }
-        
-        function startGame(songId, name, speed, spawnT) {
-            currentSongName = name;
-            score = 0;
-            combo = 0;
-            notes = [];
-            songTimer = 0;
-            spawnCounter = 0;
-            seqIndex = 0;
-            fallSpeed = speed;
-            spawnRate = spawnT;
-            songDuration = 600; // Fixed 10 seconds playtime
-            
-            hideAllOverlays();
-            document.getElementById('hud').classList.remove('hidden');
-            document.getElementById('pauseBtn').classList.remove('hidden');
-            gameState = 'PLAYING';
-            updateUI();
-        }
-        
-        function pauseGame() {
-            if (gameState !== 'PLAYING') return;
-            gameState = 'PAUSED';
-            hideAllOverlays();
-            document.getElementById('pauseMenu').classList.remove('hidden');
-        }
-        
-        function resumeGame() {
-            gameState = 'PLAYING';
-            hideAllOverlays();
-        }
-        
-        function quitToMenu() {
-            gameState = 'MENU';
-            document.getElementById('hud').classList.add('hidden');
-            document.getElementById('pauseBtn').classList.add('hidden');
-            showSongSelect();
-        }
-        
-        function endGame() {
-            gameState = 'MENU';
-            document.getElementById('hud').classList.add('hidden');
-            document.getElementById('pauseBtn').classList.add('hidden');
-            document.getElementById('resultsSongName').innerText = currentSongName;
-            document.getElementById('finalScore').innerText = "Score: " + score;
-            hideAllOverlays();
-            document.getElementById('resultsMenu').classList.remove('hidden');
-        }
-
-        function hideAllOverlays() {
-            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
-        }
-
-        document.getElementById('pauseBtn').addEventListener('click', pauseGame);
-
-        // --- INPUT HANDLING ---
-        document.addEventListener('keydown', (e) => {
-            if (gameState !== 'PLAYING') return;
-            let key = e.key.toLowerCase();
-            
-            for (let i = 0; i < lanes.length; i++) {
-                if (key === lanes[i].tapKey && !lanes[i].keyPressed) {
-                    lanes[i].keyPressed = true;
-                    checkHit(i, 'tap');
-                }
-                if (key === lanes[i].swipeKey) {
-                    checkHit(i, 'swipe');
-                }
-            }
-            if (e.key === 'Escape') pauseGame();
-        });
-
-        document.addEventListener('keyup', (e) => {
-            let key = e.key.toLowerCase();
-            for (let i = 0; i < lanes.length; i++) {
-                if (key === lanes[i].tapKey) {
-                    lanes[i].keyPressed = false;
-                    for (let n of notes) {
-                        if (n.lane === i && n.type === 'hold' && n.holding) {
-                            if (n.holdProgress < n.holdDuration) {
-                                n.missed = true;
-                                combo = 0;
-                                updateUI();
-                            }
-                            n.holding = false;
-                        }
-                    }
-                }
-            }
-        });
-
-        canvas.addEventListener('mousedown', (e) => {
-            if (gameState !== 'PLAYING') return;
-            let rect = canvas.getBoundingClientRect();
-            let x = e.clientX - rect.left;
-            let laneIndex = Math.floor(x / (rect.width / 3));
-            if(laneIndex >= 0 && laneIndex < 3) {
-                lanes[laneIndex].keyPressed = true;
-                checkHit(laneIndex, 'tap');
-            }
-        });
-
-        canvas.addEventListener('mouseup', () => {
-            for (let i = 0; i < lanes.length; i++) {
-                lanes[i].keyPressed = false;
-                for (let n of notes) {
-                    if (n.lane === i && n.type === 'hold' && n.holding) {
-                        if (n.holdProgress < n.holdDuration) {
-                            n.missed = true;
-                            combo = 0;
-                            updateUI();
-                        }
-                        n.holding = false;
-                    }
-                }
-            }
-        });
-
-        function checkHit(laneIndex, inputType) {
-            for (let i = 0; i < notes.length; i++) {
-                let n = notes[i];
-                if (n.lane === laneIndex && !n.hit && !n.missed) {
-                    if (n.y > hitLineY - 50 && n.y < hitLineY + 40) {
-                        if (inputType === 'tap' && (n.type === 'tap' || n.type === 'hold')) {
-                            n.hit = true;
-                            if (n.type === 'hold') {
-                                n.holding = true;
-                                n.hit = false;
-                            } else {
-                                addScore();
-                            }
-                            return;
-                        }
-                        if (inputType === 'swipe' && n.type === 'swipe') {
-                            n.hit = true;
-                            addScore();
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-
-        function addScore() {
-            score += 10 * (1 + Math.floor(combo / 10));
-            combo++;
-            updateUI();
-        }
-
-        function updateUI() {
-            document.getElementById('scoreDisplay').innerText = "Score: " + score;
-            document.getElementById('comboDisplay').innerText = combo > 0 ? "Combo: " + combo : "";
-        }
-
-        // --- GAME LOOP ---
-        function update() {
-            songTimer++;
-            if (songTimer > songDuration) {
-                endGame();
-                return;
-            }
-
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Lanes & Hit Areas
-            for (let i = 0; i < lanes.length; i++) {
-                ctx.fillStyle = 'rgba(255,255,255,0.02)';
-                ctx.fillRect(laneXPositions[i], 0, laneWidth, canvas.height);
-                
-                ctx.beginPath();
-                ctx.arc(laneXPositions[i] + laneWidth/2, hitLineY, 32, 0, 2 * Math.PI);
-                ctx.fillStyle = lanes[i].keyPressed ? lanes[i].glow : 'rgba(255,255,255,0.02)';
-                ctx.fill();
-                
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = lanes[i].keyPressed ? lanes[i].color : 'rgba(255,255,255,0.15)';
-                ctx.stroke();
-            }
-
-            // Hit Line
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(0, hitLineY);
-            ctx.lineTo(canvas.width, hitLineY);
-            ctx.stroke();
-
-            // Spawn logic
-            spawnCounter++;
-            if (spawnCounter > spawnRate) {
-                spawnNote();
-                spawnCounter = 0;
-            }
-
-            // Update Notes
-            for (let i = notes.length - 1; i >= 0; i--) {
-                let n = notes[i];
-                if(!n.holding) n.y += fallSpeed;
-
-                let currentLane = lanes[n.lane];
-                let currentX = laneXPositions[n.lane];
-
-                if (n.holding) {
-                    n.holdProgress++;
-                    if (n.holdProgress >= n.holdDuration) {
-                        n.hit = true;
-                        addScore();
-                    }
-                }
-
-                if (!n.hit && !n.missed) {
-                    ctx.shadowColor = currentLane.color;
-                    ctx.shadowBlur = 10;
-
-                    if (n.type === 'tap') {
-                        ctx.fillStyle = currentLane.color;
-                        ctx.fillRect(currentX + 20, n.y, n.width - 40, n.height);
-                    } 
-                    else if (n.type === 'swipe') {
-                        ctx.fillStyle = '#b388ff'; 
-                        ctx.shadowColor = '#b388ff';
-                        ctx.shadowBlur = 15;
-                        ctx.beginPath();
-                        ctx.moveTo(currentX + laneWidth/2, n.y);
-                        ctx.lineTo(currentX + laneWidth/2 + 18, n.y + n.height/2);
-                        ctx.lineTo(currentX + laneWidth/2, n.y + n.height);
-                        ctx.lineTo(currentX + laneWidth/2 - 18, n.y + n.height/2);
-                        ctx.closePath();
-                        ctx.fill();
-                    }
-                    else if (n.type === 'hold') {
-                        let tailHeight = n.holdDuration * fallSpeed;
-                        ctx.fillStyle = currentLane.color + '40';
-                        ctx.fillRect(currentX + 30, n.y, n.width - 60, tailHeight);
-                        
-                        ctx.fillStyle = currentLane.color;
-                        ctx.fillRect(currentX + 20, n.y, n.width - 40, n.height);
-                        
-                        if (n.holding) {
-                             ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                             ctx.fillRect(currentX + 30, n.y, n.width - 60, n.holdProgress * fallSpeed);
-                        }
-                    }
-                    ctx.shadowBlur = 0;
-                }
-
-                if (n.y > canvas.height && !n.hit && !n.missed) {
-                    n.missed = true;
-                    combo = 0;
-                    updateUI();
-                }
-                
-                if (n.hit || n.missed) {
-                    notes.splice(i, 1);
-                }
-            }
-        }
-
-        function gameLoop() {
-            if (gameState === 'PLAYING') {
-                update();
-            }
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Initialize
-        showMainMenu();
-        requestAnimationFrame(gameLoop);
-    </script>
-</body>
-</html>
+        <div id="
