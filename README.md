@@ -28,8 +28,8 @@ Vanilla JavaScript (No dependencies)
 
 ## 🚀 Roadmap
 
- Add actual audio syncing (Web Audio API).
- Implement charting tool to map MIDI files of Ren's songs to notes.
+- Add actual audio syncing using Web Audio API, initially with placeholder or cleared audio.
+- Implement a charting tool for authorized source material.
  Add mobile touch support (swipe gestures).
  Implement the "Clarity Meter" to distort the screen when missing notes.
 
