@@ -51,8 +51,10 @@
 
         #gameContainer {
             position: relative;
-            width: 450px;
-            height: 750px;
+            width: min(450px, calc(100vw - 24px), calc((100vh - 24px) * 0.6));
+            aspect-ratio: 3 / 5;
+            height: auto;
+            max-height: calc(100vh - 24px);
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(0, 242, 254, 0.05);
@@ -63,6 +65,9 @@
             background: linear-gradient(180deg, #0d0f17 0%, #050608 100%);
             margin: 0 auto;
             display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
         }
         
         .overlay {
@@ -461,6 +466,7 @@
                     hit: false,
                     missed: false,
                     holding: false,
+                    holdStarted: false,
                     duration: noteData.duration ? noteData.duration : 0
                 });
             }
@@ -589,6 +595,44 @@
 
         document.getElementById('pauseBtn').addEventListener('click', pauseGame);
 
+        // Pointer/touch controls. The playfield maps directly to the three lanes,
+        // while a horizontal swipe can trigger the adjacent lane's swipe note.
+        let pointerStart = null;
+        function getLaneFromPointer(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            return Math.max(0, Math.min(lanes.length - 1, Math.floor((x / rect.width) * lanes.length)));
+        }
+        canvas.addEventListener('pointerdown', (event) => {
+            if (gameState !== 'PLAYING') return;
+            event.preventDefault();
+            canvas.setPointerCapture?.(event.pointerId);
+            pointerStart = { x: event.clientX, y: event.clientY, lane: getLaneFromPointer(event) };
+            lanes[pointerStart.lane].keyPressed = true;
+            checkHit(pointerStart.lane, 'tap');
+        });
+        canvas.addEventListener('pointerup', (event) => {
+            if (gameState !== 'PLAYING' || !pointerStart) return;
+            event.preventDefault();
+            const start = pointerStart;
+            const endLane = getLaneFromPointer(event);
+            const dx = event.clientX - start.x;
+            const dy = event.clientY - start.y;
+            const distance = Math.hypot(dx, dy);
+            lanes[start.lane].keyPressed = false;
+            if (distance >= 24) {
+                const swipeLane = Math.abs(dx) >= Math.abs(dy)
+                    ? Math.max(0, Math.min(lanes.length - 1, start.lane + (dx > 0 ? 1 : -1)))
+                    : endLane;
+                checkHit(swipeLane, 'swipe');
+            }
+            pointerStart = null;
+        });
+        canvas.addEventListener('pointercancel', () => {
+            if (pointerStart) lanes[pointerStart.lane].keyPressed = false;
+            pointerStart = null;
+        });
+
         // Controls & Input Listener
         document.addEventListener('keydown', (e) => {
             let key = e.key.toLowerCase();
@@ -623,12 +667,17 @@
                     for (let n of notes) {
                         if (n.lane === i && n.type === 'hold' && n.holding) {
                             let tailEndHitTime = n.hitTime + n.duration;
-                            if (getAudioTime() < tailEndHitTime) {
+                            const releaseTime = getAudioTime();
+                            // Tail completion wins at the boundary; only an early release misses.
+                            if (releaseTime < tailEndHitTime) {
                                 n.missed = true;
                                 combo = 0;
                                 triggerHitFeedback('MISS', i, '#ff2e4d');
                                 triggerScreenShake(10);
                                 updateUI();
+                            } else if (!n.hit) {
+                                n.hit = true;
+                                registerHit(i, 0);
                             }
                             n.holding = false;
                         }
@@ -647,7 +696,9 @@
                     if (timeDiff < 0.5) {
                         if (inputType === 'tap' && (n.type === 'tap' || n.type === 'hold')) {
                             if (n.type === 'hold') {
+                                if (n.holding || n.holdStarted) return;
                                 n.holding = true;
+                                n.holdStarted = true;
                                 playHitSound();
                             } else {
                                 n.hit = true;
