@@ -49,3 +49,10 @@ Vanilla JavaScript (No dependencies)
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 Disclaimer: This is a fan-made prototype. All music, themes, and intellectual property related to Ren Gill belong to him and his respective labels. No copyright infringement is intended. If this project is ever distributed publicly, proper licensing for the music must be acquired from Ren's management.# ren-tap-tap-revenge
+
+
+## Original music/code exercise
+
+[Open the new exercise](https://ibloud.github.io/ren-tap-tap-revenge/lesson.html). This separate text-first page uses our four-note synthetic-tone motif, not a Ren song. Change tempo, first-note pitch/duration/action, listen, practice tapping, or use untimed Next note. Inspect the note table, download/copy the chart JSON, and import validated charts. No login, network stream, device input, code execution from imports or automatic publishing is required.
+
+The older canvas prototype above remains experimental. Source-verified Ren questions, MIDI/OSC, Cyber-G input, Clone Hero conversion, audio calibration and device accessibility verification are not delivered by this exercise. See [the exercise contract and validation checklist](docs/ORIGINAL-EXERCISE.md).
