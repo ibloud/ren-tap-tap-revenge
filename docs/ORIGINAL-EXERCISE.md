@@ -25,3 +25,10 @@ Cyber-G audio and keyboard MIDI need separate physical receiving-app tests befor
 ## Local preview observations
 
 October 4, 2026, cloud Chromium HTTP preview: tempo and action edits updated JSON/table; untimed first note applied Pulse instead of Step; timed playback entered running state and paused with position retained. Audio audibility/latency, file download/reimport, VoiceOver and physical iPad/Cyber-G behavior remain unverified.
+
+
+## 2026-10-04 optional MIDI adapter addendum
+
+The original no-device-input exercise remains available by default. `lesson-midi-model.js` and `lesson-midi.js` now add explicit, input-only MIDI learning for two existing actions: timed tap and untimed Next note. A supporting HTTPS browser and permission are required. This updates the earlier device-input boundary only for learned note/button events. Device-specific presets, continuous jog/fader control, OSC, microphone recording, audio-output routing and automated latency calibration remain unimplemented. Physical DJ2GO2 and iPad/VoiceOver tests remain open.
+
+Mappings are bounded portable JSON without device IDs. Recent input messages, a manually selected listening route/result and optional notes are visible in an export preview; export is explicit, local and unverified by the application. No automatic storage, upload or feedback collection is introduced. [Physical test plan, equipment/accessibility roles and Creator OS handoff](https://github.com/ibloud/tarantula-clone-hero/blob/main/docs/CONTROLLER-LAB.md).

@@ -53,6 +53,13 @@ Disclaimer: This is a fan-made prototype. All music, themes, and intellectual pr
 
 ## Original music/code exercise
 
-[Open the new exercise](https://ibloud.github.io/ren-tap-tap-revenge/lesson.html). This separate text-first page uses our four-note synthetic-tone motif, not a Ren song. Change tempo, first-note pitch/duration/action, listen, practice tapping, or use untimed Next note. Inspect the note table, download/copy the chart JSON, and import validated charts. No login, network stream, device input, code execution from imports or automatic publishing is required.
+[Open the new exercise](https://ibloud.github.io/ren-tap-tap-revenge/lesson.html). This separate text-first page uses our four-note synthetic-tone motif, not a Ren song. Change tempo, first-note pitch/duration/action, listen, practice tapping, or use untimed Next note. Inspect the note table, download/copy the chart JSON, and import validated charts. No login, network stream, device input, code execution from imports or automatic publishing is required. The optional MIDI adapter below adds input only when explicitly connected.
 
-The older canvas prototype above remains experimental. Source-verified Ren questions, MIDI/OSC, Cyber-G input, Clone Hero conversion, audio calibration and device accessibility verification are not delivered by this exercise. See [the exercise contract and validation checklist](docs/ORIGINAL-EXERCISE.md).
+The older canvas prototype above remains experimental. Source-verified Ren questions, OSC, verified Cyber-G input, continuous DJ control, Clone Hero conversion, audio calibration and device accessibility verification are not delivered by this exercise. See [the exercise contract and validation checklist](docs/ORIGINAL-EXERCISE.md).
+
+
+## Optional MIDI control lab
+
+[Connect and learn one pad/button](https://ibloud.github.io/ren-tap-tap-revenge/lesson.html#controller). MIDI input can drive the existing timed tap or untimed Next note in a supporting HTTPS browser after permission. No preset DJ2GO2 numbers are assumed. Held/repeated messages do not retrigger; disconnect/unplug/hidden-page and denied-permission paths preserve touch/keyboard practice. Export/import bounded mappings and review an optional manual test record. No microphone, MIDI output, SysEx, device-ID export, automatic save or upload.
+
+Physical DJ2GO2 testing is open. Tula recording, Shure listening and AirPods Pro 3 accessibility are documented external routes; Creator OS uses local files and reviewed manual notes. See [equipment, accessibility, test instructions and expansion gates](https://github.com/ibloud/tarantula-clone-hero/blob/main/docs/CONTROLLER-LAB.md). Codex assisted this implementation.
