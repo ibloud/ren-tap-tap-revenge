@@ -20,5 +20,7 @@ jobs:
           node --check lesson.js
           node --check lesson-midi-model.js
           node --check lesson-midi.js
+          node --check visual-model.js
+          node --check visual.js
       - name: Test scheduling, input feedback and import boundaries
         run: node --test tests/*.test.js
